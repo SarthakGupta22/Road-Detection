@@ -6,3 +6,4 @@
 * Scipy
 * Pillow
 * Matplotlib
+* cv2
