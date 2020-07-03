@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import matplotlib.pyplot as plt
+from Energy_Fn import energy_new
 
 
 def get_distance(arr, P):
@@ -16,9 +17,9 @@ def Fuse(image, prob_NN, prob_DD, prob_FF, iterations):
     start = time.time()
 
     rows, cols = image.shape[0:2]
-    textureR = image[:, :, 0]
-    textureG = image[:, :, 1]
-    textureB = image[:, :, 2]
+    textureR = image[:, :, 0]/255
+    textureG = image[:, :, 1]/255
+    textureB = image[:, :, 2]/255
 
     # texture = (image[:, :, 0] + image[:, :, 1] + image[:, :, 2])/3
 
@@ -50,31 +51,38 @@ def Fuse(image, prob_NN, prob_DD, prob_FF, iterations):
     sum_weights = UC + DC + LC + RC
 
     M = np.average(np.arange(0, cols), weights=prob_NN[rows - 1])
-    M = np.average(np.arange(0, cols), weights=prob_DD[rows - 1])
-    print("Mean : ", M)
+    #M = np.average(np.arange(0, cols), weights=prob_DD[rows - 1])
+    #print("Mean : ", M)
 
     baseline = np.array([255, round(M)])
     radius = round((rows / 5) * 2)
 
     distances = get_distance(prob_NN, baseline)
-    d1 = np.where(distances < radius)
-    d2 = np.where(distances >= radius)
+    d1 = np.where(distances < round(cols/4))
+    d2 = np.where(distances >= round(cols/4))
 
     W_DD = 1
     W_NN = 1
 
-    decay = (round(cols / 2) - distances) / round(cols / 2)
+    decay = (round(cols / 4) - distances) / round(cols / 4)
+    decay = 1 - distances/cols
     # decay = (rows - distances) / (rows - radius)
 
     decay[np.where(decay < 0)] = 0
 
-    # sum_weights[d1] = sum_weights[d1] + W_DD
-    # sum_weights[d2] = sum_weights[d2] + W_DD * decay[d2]
-    sum_weights = sum_weights + W_DD * 1
+    sum_weights[d1] = sum_weights[d1] + W_DD * decay[d1]
+    sum_weights[d2] = sum_weights[d2] + W_DD * 0.75
+    #sum_weights = sum_weights + W_DD * 1
     sum_weights = sum_weights + W_NN
 
     # Energy minimization
+    xaxis = np.arange(iterations)
+    yaxis = np.empty([iterations])
+    plotyaxis = np.empty([iterations])
     for i in range(0, iterations):
+        #print(np.unique(prob_FF))
+        energy = energy_new(prob_NN, prob_DD, prob_FF, W_NN, W_DD, RC, UC, LC, DC)
+        yaxis[i] = energy
         prob_FF = np.append(np.multiply(prob_FF[:, 1: cols], RC[:, 0: cols - 1]), np.zeros((rows, 1)), axis=1) + \
                   np.insert(np.multiply(prob_FF[0: rows - 1, :], UC[1:rows, :]), 0, np.zeros((cols)), axis=0) + \
                   np.insert(np.multiply(prob_FF[:, 0:cols - 1], LC[:, 1:cols]), 0, np.zeros((rows)), axis=1) + \
@@ -82,35 +90,19 @@ def Fuse(image, prob_NN, prob_DD, prob_FF, iterations):
 
         # prob_FF[d1] = prob_FF[d1] + W_DD * prob_DD[d1]
         # prob_FF[d2] = prob_FF[d2] + W_DD * decay[d2] * prob_DD[d2]
-        prob_FF = prob_FF + W_DD * prob_DD * 1
+        #prob_FF = prob_FF + W_DD * prob_DD * 1
         prob_FF = prob_FF + W_NN * prob_NN
+
+        prob_FF[d1] = prob_FF[d1] +  W_DD * prob_DD[d1] * decay[d1]
+        prob_FF[d2] = prob_FF[d2] + W_DD * prob_DD[d2] * 0.75
 
         prob_FF = np.divide(prob_FF, sum_weights)
 
-    end = time.time()
-    print(f'Total Time Taken : {end - start}')
 
-    prob_DD[np.where(prob_DD > 0.5)] = 1
-    prob_DD[np.where(prob_DD <= 0.5)] = 0
+    end = time.time()
 
     prob_FF[np.where(prob_FF > 0.5)] = 1
     prob_FF[np.where(prob_FF <= 0.5)] = 0
 
-    prob_NN[np.where(prob_NN > 0.5)] = 1
-    prob_NN[np.where(prob_NN <= 0.5)] = 0
-
-    f, (ax0, ax1) = plt.subplots(2, 2, sharex='all', sharey='all')
-    ax0[0].imshow(image, cmap=plt.cm.gray)
-    ax0[0].set_title("Original Image")
-    ax0[1].imshow(image, cmap=plt.cm.gray)
-    ax0[1].imshow(prob_NN, cmap=plt.cm.viridis, alpha=.5)
-    ax0[1].set_title("Only Neural Network Prob")
-    ax1[0].imshow(image, cmap=plt.cm.gray)
-    ax1[0].imshow(prob_DD, cmap=plt.cm.viridis, alpha=.5)
-    ax1[0].set_title("vdisparity/New3DMethod")
-    ax1[1].imshow(image, cmap=plt.cm.gray)
-    ax1[1].imshow(prob_FF, cmap=plt.cm.viridis, alpha=.5)
-    ax1[1].set_title("Fusion")
-    plt.show()
 
     return prob_FF
