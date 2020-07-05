@@ -1,7 +1,5 @@
 import numpy as np
 import time
-import matplotlib.pyplot as plt
-from Energy_Fn import energy_new
 
 
 def get_distance(arr, P):
@@ -14,7 +12,6 @@ def get_distance(arr, P):
 
 
 def Fuse(image, prob_NN, prob_DD, prob_FF, iterations):
-    start = time.time()
 
     rows, cols = image.shape[0:2]
     textureR = image[:, :, 0]/255
@@ -80,9 +77,6 @@ def Fuse(image, prob_NN, prob_DD, prob_FF, iterations):
     yaxis = np.empty([iterations])
     plotyaxis = np.empty([iterations])
     for i in range(0, iterations):
-        #print(np.unique(prob_FF))
-        energy = energy_new(prob_NN, prob_DD, prob_FF, W_NN, W_DD, RC, UC, LC, DC)
-        yaxis[i] = energy
         prob_FF = np.append(np.multiply(prob_FF[:, 1: cols], RC[:, 0: cols - 1]), np.zeros((rows, 1)), axis=1) + \
                   np.insert(np.multiply(prob_FF[0: rows - 1, :], UC[1:rows, :]), 0, np.zeros((cols)), axis=0) + \
                   np.insert(np.multiply(prob_FF[:, 0:cols - 1], LC[:, 1:cols]), 0, np.zeros((rows)), axis=1) + \
@@ -98,8 +92,6 @@ def Fuse(image, prob_NN, prob_DD, prob_FF, iterations):
 
         prob_FF = np.divide(prob_FF, sum_weights)
 
-
-    end = time.time()
 
     prob_FF[np.where(prob_FF > 0.5)] = 1
     prob_FF[np.where(prob_FF <= 0.5)] = 0
