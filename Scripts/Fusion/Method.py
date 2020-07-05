@@ -46,8 +46,13 @@ def Fuse(image, prob_NN, prob_DD, prob_FF, iterations):
     LC = np.insert(LC, 0, np.zeros((rows)), axis=1)
 
     sum_weights = UC + DC + LC + RC
+    
+    sum = np.sum(prob_NN[rows - 1, :])
+    if sum < 5:
+        M = np.average(np.arange(0, cols), weights=prob_NN[rows - 2])
+    else:
+        M = np.average(np.arange(0, cols), weights=prob_NN[rows - 1])
 
-    M = np.average(np.arange(0, cols), weights=prob_NN[rows - 1])
     #M = np.average(np.arange(0, cols), weights=prob_DD[rows - 1])
     #print("Mean : ", M)
 
